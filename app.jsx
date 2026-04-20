@@ -136,7 +136,7 @@ function Hero(){
           渡った人だけが、<br/>
           <span className="accent">知っている。</span>
         </h1>
-        <p className="hero__sub">
+        <p className="hero__sub hero__sub--blur">
           日本最長 <strong>420m</strong>・高さ <strong>55m</strong>。<br/>
           大阪・安威川ダム湖上の吊り橋体験、4種類。
         </p>
@@ -192,6 +192,10 @@ function Hero(){
               <span className="hero__cal-s">残{d.stock}</span>
             </button>
           ))}
+        </div>
+        <div className="hero__proof-next">
+          <span>次の確実な空き: 明日 14:00</span>
+          <span className="hero__proof-next-arrow">→</span>
         </div>
         <div className="hero__proof-viewers">
           <Icon.eye/>
@@ -346,6 +350,7 @@ function PlanCard({p}){
   const handleClick=()=>{window.openBooking(p.key);window.track('cta_click',{plan:p.key,location:'menu_card'});};
   return (
     <article className={`mcard ${p.hot?'hot':''}`}>
+      {p.hot && <div className="mcard__hot-badge">3人に2人が選ぶ</div>}
       <div className="mcard__media" onClick={handleClick} style={{cursor:'pointer'}}>
         <img src={p.img} alt={p.name} loading="lazy"/>
         <div className="mcard__badges">
@@ -370,7 +375,7 @@ function PlanCard({p}){
             <div className="mcard__time">{p.time}分 / {p.age}</div>
           </div>
         </div>
-        <button className="mcard__cta" onClick={handleClick}>日程を選ぶ →</button>
+        <button className="mcard__cta" onClick={handleClick}>このプランで日程を選ぶ →</button>
       </div>
     </article>
   );
@@ -519,23 +524,44 @@ function Compare(){
 // ============================================================
 function ViralCard({c}){
   const ref=useRef(null);
-  const [playing,setPlaying]=useState(false);
+  const videoRef=useRef(null);
+  const [visible,setVisible]=useState(false);
   useEffect(()=>{
     const io=new IntersectionObserver((entries)=>{
-      entries.forEach(e=>setPlaying(e.isIntersecting&&e.intersectionRatio>.5));
-    },{threshold:[0,.5,1]});
+      entries.forEach(e=>{
+        const v=e.isIntersecting&&e.intersectionRatio>.3;
+        setVisible(v);
+        if(v&&videoRef.current&&videoRef.current.paused){
+          videoRef.current.play().catch(()=>{});
+        } else if(!v&&videoRef.current){
+          videoRef.current.pause();
+        }
+      });
+    },{threshold:[0,.3,.7]});
     if(ref.current)io.observe(ref.current);
     return ()=>io.disconnect();
   },[]);
+  const handlePlay=()=>{
+    window.open(c.url,'_blank','noopener');
+    window.track('video_play',{label:c.tag,plan:c.plan});
+  };
   return (
-    <div ref={ref} className={`vcard ${playing?'playing':''}`}>
-      <img className="vcard__media" src={c.img} alt=""/>
+    <div ref={ref} className={`vcard ${visible?'playing':''}`}>
+      <video ref={videoRef}
+        className="vcard__video"
+        poster={c.img}
+        muted playsInline preload="none"
+        loop
+      />
+      <img className="vcard__media" src={c.img} alt="" loading="lazy"/>
       <span className="vcard__tag">{c.tag}</span>
-      <div className="vcard__play" onClick={()=>window.open(c.url,'_blank','noopener')}><Icon.play/></div>
+      <button className="vcard__play" onClick={handlePlay} aria-label="動画を再生">
+        <Icon.play/>
+      </button>
       <div className="vcard__meta">
         <div className="vcard__views"><Icon.eye/>{c.views}</div>
         <div className="vcard__cap">{c.cap}</div>
-        <button className="vcard__plan" onClick={()=>{window.openBooking(c.plan);window.track('cta_click',{plan:c.plan,location:'viral'});}}>{c.planLabel} →</button>
+        <button className="vcard__plan" onClick={()=>{window.openBooking(c.plan);window.track('plan_card_click',{label:c.plan,location:'viral'});}}>{c.planLabel} →</button>
       </div>
     </div>
   );
@@ -627,6 +653,7 @@ function Voices(){
 // Flow
 // ============================================================
 function Flow(){
+  const [flowPlan,setFlowPlan]=useState('swing');
   const steps=[
     {n:'01',t:'30秒',title:'日時とプランを選ぶ',desc:'カレンダーで空きを確認。気になった瞬間を、そのまま押さえられます。'},
     {n:'02',t:'30秒',title:'名前と連絡先を入力',desc:'会員登録は不要。SMSで確認コードが届くだけ。クレカも事前不要です。'},
@@ -660,6 +687,31 @@ function Flow(){
             <span>日程を選ぶ →</span>
             <Icon.arrow/>
           </button>
+        </div>
+      </div>
+      <div className="flow__booking" id="book">
+        <h3 className="flow__booking-title">日程・プランを選ぶ</h3>
+        <div className="flow__tabs">
+          {PLANS.map(p=>(
+            <button key={p.key}
+              className={`flow__tab ${flowPlan===p.key?'active':''}`}
+              onClick={()=>{setFlowPlan(p.key);window.track('plan_card_click',{label:p.key,location:'booking_widget'});}}
+            >
+              {p.kicker} ￥{p.price.toLocaleString()}～
+            </button>
+          ))}
+        </div>
+        <div className="flow__calendar">
+          <div className="flow__cal-inner">
+            <Icon.clock width="36" height="36" style={{color:'var(--orange)'}}/>
+            <p className="flow__cal-msg">{PLANS.find(p=>p.key===flowPlan)?.name}の空きを確認</p>
+            <p className="flow__cal-note">予約システムはアソビュー・じゃらんと連携。実際のカレンダーは本番環境で表示されます。</p>
+            <button className="flow__cal-cta"
+              onClick={()=>{window.openBooking(flowPlan);window.track('booking_calendar_view',{plan:flowPlan});}}
+            >
+              このプランで90秒で予約 →
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -734,6 +786,9 @@ function FAQ(){
     {q:'持ち物・服装は？',a:'動きやすい服装でお越しください。ヒール・サンダルは不可。アクセサリーはスタッフが保管できます。防寒対策として上着をお持ちいただくことをお勧めしています。'},
     {q:'グループ（大人数）での予約は？',a:'10名以上の場合は団体料金が適用される場合があります。事前にメールまたは電話でお問い合わせいただくとスムーズです。'},
     {q:'プラン変更・当日追加は？',a:'当日スタッフに直接お伟いください。空きがあれば現地でプラン変更・追加が可能です。特にウォーク後にスイングを追加する方が多いです。'},
+    {q:'妊娠中・持病があるのですが？',a:'妊娠中の方は全プランご遠慮いただいております。心臓疾患・高血圧・骨粗鬼症など、造成内容に関わる持病の方は事前に必ず医師に相談ください。スタッフにご相談いただければ指針に少し増える高所体験もご紹介できます。'},
+    {q:'身長・体重の制限は？',a:'ブリッジウォーク・クライムは130cm以上。スイングは130cm・40kg以上120kg以下。バンジーは140cm・50kg以上100kg以下。ご不明な場合は事前にお問い合わせください。'},
+    {q:'カップル割・グループ割はありますか？',a:'現在カップル割は設けておりませんが、6名以上のグループは団体割引が適用されます。詳細は事前にお問い合わせください。認識兵工学部・学生証明のある方には学生割引を適用している場合があります。お気軽にご確認ください。'},
   ];
   const filtered=q?items.filter(it=>it.q.includes(q)||it.a.includes(q)):items;
   return (
@@ -756,7 +811,12 @@ function FAQ(){
         {filtered.map((it,i)=>(
           <details key={i} className="faq__item" open={i===0&&!q}>
             <summary>{it.q}</summary>
-            <div className="faq__body">{it.a}</div>
+            <div className="faq__body">
+              {it.a}
+              <div className="faq__item-cta">
+                <button onClick={()=>{window.openBooking('swing');window.track('cta_click',{plan:'swing',location:'faq'});}}>不安が消えたら → 日程を選ぶ</button>
+              </div>
+            </div>
           </details>
         ))}
       </div>
@@ -811,6 +871,7 @@ function Final(){
 // ============================================================
 function BottomCTA(){
   const [show,setShow]=useState(false);
+  const [atFinal,setAtFinal]=useState(false);
   useEffect(()=>{
     const on=()=>{
       const hero=document.querySelector('.hero');
@@ -819,6 +880,7 @@ function BottomCTA(){
       const bottom=hero.getBoundingClientRect().bottom;
       const finalTop=final?final.getBoundingClientRect().top:9999;
       setShow(bottom<0&&finalTop>window.innerHeight*.6);
+      setAtFinal(finalTop<window.innerHeight*.85);
     };
     window.addEventListener('scroll',on,{passive:true});on();
     return ()=>window.removeEventListener('scroll',on);
@@ -830,9 +892,16 @@ function BottomCTA(){
           <div className="bottom-cta__main">￥1,500～ <span style={{color:'#666'}}>/</span> <b>本日あと2枠</b></div>
           <div className="bottom-cta__sub">最人気 SWING ￥3,800～ ・ 当日キャンセル無料</div>
         </div>
-        <button className="bottom-cta__btn" onClick={()=>{window.openBooking('swing');window.track('cta_click',{plan:'swing',location:'bottom_cta'});}}>
-          日程を選ぶ →
-        </button>
+        <div className="bottom-cta__btns">
+          <button className="bottom-cta__btn" onClick={()=>{window.openBooking('swing');window.track('cta_click',{plan:'swing',location:'bottom_cta'});}}>
+            日程を選ぶ →
+          </button>
+          {atFinal&&(
+            <a href="https://line.me/R/ti/p/@gravitateosaka" className="bottom-cta__line" target="_blank" rel="noopener" onClick={()=>window.track('line_click',{location:'bottom_cta'})}>
+              <Icon.line width="18" height="18"/>
+            </a>
+          )}
+        </div>
       </div>
     </div>
   );
