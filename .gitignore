@@ -1,0 +1,12 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# WordPress版（GitHub Pages不要）
+GRAVITATE_OSAKA_WP_inline.html
+GRAVITATE_OSAKA_WP貼り付け用.txt
+GRAVITATE_OSAKA_WP貼り付けv2.txt
